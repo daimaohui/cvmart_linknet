@@ -75,4 +75,4 @@ if __name__ == '__main__':
     img = cv2.imread('/home/data/1430/square_20220815_v1_p_train_street_1_225.jpg')
     # img = np.random.randn(1024,512,3)
     model = init()
-    process_image(model,img)
+    process_image(model,img,json.dumps({"mask_output_path": "1.png"}, indent=4))
