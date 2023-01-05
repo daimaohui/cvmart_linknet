@@ -52,7 +52,6 @@ struct Configuration
     cv::Scalar targetRectColor = {0, 255, 0, 1.0f}; // 检测框`mark`的颜色
     cv::Scalar textFgColor = {0, 0, 0, 0};          // 检测框顶部文字的颜色
     cv::Scalar textBgColor = {255, 255, 255, 0};    // 检测框顶部文字的背景颜色
-    
     int targetTextHeight = 30;                      // 目标框顶部字体大小
 
     bool drawWarningText = true;
@@ -61,19 +60,6 @@ struct Configuration
     cv::Scalar warningTextFg = {255, 255, 255, 0}; // 报警文字颜色
     cv::Scalar warningTextBg = {0, 0, 255, 0};     // 报警文字背景颜色
     cv::Point warningTextLeftTop{0, 0};            // 报警文字左上角位置
-    std::vector<std::string> alert_classes={"fire","smoke_black","smoke_white","smoke_yellow"};
-    float smoke_alert_area=0.05;
-    float fire_alert_area=0.02;
-    cv::Scalar smoke_whiteColor={0, 0, 255, 0.8};
-    cv::Scalar smoke_blackColor={0, 255, 0, 0.8};
-    cv::Scalar smoke_yellowColor={0, 255, 237, 0.8};
-    cv::Scalar fire_Color={236, 49, 237,0.8};
-    bool black_smoke_enable=true;
-    bool white_smoke_enable=true;
-    bool yellow_smoke_enable=true;
-    bool fire_smoke_enable=true;
-    int alarm_hold_duration=0;
-    
     // --------------------------------- 通常需要根据需要修改 END -------------------------------------------
     //解析数值类型的配置
     template <typename T>
@@ -114,18 +100,7 @@ struct Configuration
         }
         return false;        
     }
-        //解析字符串数组类型配置的函数
-    bool checkAndUpdateVecStr(const std::string& key, std::vector<std::string> &val)
-    {
-        if( mJConfigValue.isMember(key) && mJConfigValue[key].isArray() ) 
-        {
-            val.resize(mJConfigValue[key].size());
-            for(int i = 0; i <  mJConfigValue[key].size(); ++i)
-            {
-                val[i] = mJConfigValue[key][i].asString();
-            }
-        }
-    }
+
     /**
      * @brief 解析json格式的配置参数,是开发者需要重点关注和修改的地方！！！     
      * @param[in] configStr json格式的配置参数字符串
@@ -166,24 +141,6 @@ struct Configuration
         checkAndUpdateColor("warning_text_color", warningTextFg);
         checkAndUpdateColor("warning_text_bg_color", warningTextBg);       
         checkAndUpdatePoint("warning_text_left_top", warningTextLeftTop);
-        
-        checkAndUpdateVecStr("alert_classes", alert_classes);
-        checkAndUpdateNumber("smoke_alert_area", smoke_alert_area);
-        checkAndUpdateNumber("fire_alert_area", fire_alert_area);
-        
-        checkAndUpdateColor("smoke_whiteColor", smoke_whiteColor);
-        checkAndUpdateColor("smoke_blackColor", smoke_blackColor);
-        checkAndUpdateColor("smoke_yellowColor", smoke_yellowColor);
-        checkAndUpdateColor("fire_Color", fire_Color);
-        
-        checkAndUpdateBool("black_smoke_enable", black_smoke_enable);
-        checkAndUpdateBool("white_smoke_enable", white_smoke_enable);
-        checkAndUpdateBool("yellow_smoke_enable", yellow_smoke_enable);
-        checkAndUpdateBool("fire_smoke_enable", fire_smoke_enable);
-        
-         checkAndUpdateNumber("alarm_hold_duration", alarm_hold_duration);
-        
-        
         std::vector<std::string> roiStrs;
         if(mJConfigValue.isMember("polygon_1") && mJConfigValue["polygon_1"].isArray() && mJConfigValue["polygon_1"].size() )
         {

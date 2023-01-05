@@ -50,7 +50,7 @@ public:
     bool Init(const std::string &strModelName, float thresh);
     bool UnInit();
     bool ProcessImage(cv::Mat &img, cv::Mat &mask, std::vector<Polygon> &detectedPolygons);
-    std::vector<cv::Mat> generate_rgb(Mat frame, Mat mask,vector<int> &areas,vector<bool> &enable,vector<vector<int>>& colors);
+    cv::Mat generate_rgb(Mat frame, Mat mask);
 private:
     void loadOnnx(const std::string strName);
     void loadTrt(const std::string strName);

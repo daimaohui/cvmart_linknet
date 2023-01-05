@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+
 /**
  * 示例代码：实现ji.h定义的sdk接口，
  *  开发者只需要对本示例中的少量代码进行修改即可:
@@ -35,7 +36,7 @@
 #include "ji.h"
 
 //算法版本号，开发者自定义，且要求每次版本更新后，按照一致的形式修改算法版本号
-static const std::string algo_version = "1.0.1";
+static const std::string algo_version = "1.0.0";
 
 //ev_sdk的版本号，当前是4.0.0，不用开发者自定义，除非明确了采用新版的ev_sdk
 static const std::string sdk_version = "4.0.0";
@@ -62,6 +63,7 @@ JiErrorCode ji_get_version(char *pVersion)
     strncpy(pVersion, strVersionInfo.c_str(), min(int(strVersionInfo.size() + 1), MAX_VERSION_LENGTH));    
     return jRet;
 }
+
 
 JiErrorCode ji_init(int argc, char **argv)
 {
@@ -186,7 +188,6 @@ JiErrorCode ji_update_config(void *predictor, const char *args)
 
     if(detector->UpdateConfig(args) != SampleAlgorithm::STATUS_SUCCESS)//调用自定义算法class类的配置update函数
         return JISDK_RET_FAILED;
-    
     return JISDK_RET_SUCCEED;
 }
 

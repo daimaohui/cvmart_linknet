@@ -1,18 +1,3 @@
-/*
- * Copyright (c) 2021 ExtremeVision Co., Ltd.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 #ifndef JI_ALGORITHM_CONFIGURATION
 #define JI_ALGORITHM_CONFIGURATION
 #include <iostream>
@@ -33,6 +18,7 @@ typedef struct
 {
     // 与自定义算法密切相关的配置参数，可封装在该结构体中
     double thresh;
+    std::string mask_output_path;
 } AlgoConfig;
 
 /**
@@ -40,10 +26,9 @@ typedef struct
  */
 struct Configuration
 {
-private:
+    private:
     Json::Value mJConfigValue;
-
-public:
+    public:    
     // 算法与画图的可配置参数及其默认值
     // 1. roi配置
     std::vector<cv::Rect> currentROIRects;           // 多边形roi区域对应的矩形区域（roi可能是多个）
@@ -61,54 +46,55 @@ public:
     // 3. 算法配置参数
     AlgoConfig algoConfig = {0.4}; // 默认的算法配置
     // 4. 与报警信息相关的配置
-    std::string language = "en";                                                                                                  // 所显示文字的默认语言
-    std::string mask_output_path="";
-    int targetRectLineThickness = 4;                                                                                              // 目标框粗细
-    std::map<std::string, std::vector<std::string>> targetRectTextMap = {{"en", {"vehicle", "plate"}}, {"zh", {"车辆", "车牌"}}}; // 检测目标框顶部文字
-    cv::Scalar targetRectColor = {0, 255, 0, 1.0f};                                                                               // 检测框`mark`的颜色
-    cv::Scalar textFgColor = {0, 0, 0, 0};                                                                                        // 检测框顶部文字的颜色
-    cv::Scalar textBgColor = {255, 255, 255, 0};                                                                                  // 检测框顶部文字的背景颜色
-    int targetTextHeight = 30;                                                                                                    // 目标框顶部字体大小
+    std::string language = "en";                             // 所显示文字的默认语言
+    int targetRectLineThickness = 4;                         // 目标框粗细
+    std::map<std::string, std::string> targetRectTextMap = { {"en","person"}, {"zh", "人"}};// 检测目标框顶部文字
+    cv::Scalar targetRectColor = {0, 255, 0, 1.0f}; // 检测框`mark`的颜色
+    cv::Scalar textFgColor = {0, 0, 0, 0};          // 检测框顶部文字的颜色
+    cv::Scalar textBgColor = {255, 255, 255, 0};    // 检测框顶部文字的背景颜色
+    
+    int targetTextHeight = 30;                      // 目标框顶部字体大小
 
     bool drawWarningText = true;
-    int warningTextSize = 40;                                                                          // 画到图上的报警文字大小
-    std::map<std::string, std::string> warningTextMap = {{"en", "WARNING! WARNING!"}, {"zh", "警告"}}; // 画到图上的报警文字
-    cv::Scalar warningTextFg = {255, 255, 255, 0};                                                     // 报警文字颜色
-    cv::Scalar warningTextBg = {0, 0, 255, 0};                                                         // 报警文字背景颜色
-    cv::Point warningTextLeftTop{0, 0};                                                                // 报警文字左上角位置
+    int warningTextSize = 40;                             // 画到图上的报警文字大小
+    std::map<std::string, std::string> warningTextMap = { {"en", "WARNING! WARNING!"}, {"zh", "警告"}};// 画到图上的报警文字
+    cv::Scalar warningTextFg = {255, 255, 255, 0}; // 报警文字颜色
+    cv::Scalar warningTextBg = {0, 0, 255, 0};     // 报警文字背景颜色
+    cv::Point warningTextLeftTop{0, 0};            // 报警文字左上角位置
+    std::vector<std::string> alert_classes={"fire","smoke_black","smoke_white","smoke_yellow"};
+    float smoke_alert_area=0.05;
+    float fire_alert_area=0.02;
+    cv::Scalar smoke_whiteColor={0, 0, 255, 0.8};
+    cv::Scalar smoke_blackColor={0, 255, 0, 0.8};
+    cv::Scalar smoke_yellowColor={0, 255, 237, 0.8};
+    cv::Scalar fire_Color={236, 49, 237,0.8};
+    bool black_smoke_enable=true;
+    bool white_smoke_enable=true;
+    bool yellow_smoke_enable=true;
+    bool fire_smoke_enable=true;
+    int alarm_hold_duration=0;
+    
     // --------------------------------- 通常需要根据需要修改 END -------------------------------------------
     //解析数值类型的配置
     template <typename T>
-    bool checkAndUpdateNumber(const std::string &key, T &val)
+    bool checkAndUpdateNumber(const std::string& key, T &val)
     {
-        return mJConfigValue.isMember(key) && mJConfigValue[key].isNumeric() && ((val = mJConfigValue[key].asDouble()) || true);
+      return  mJConfigValue.isMember(key) && mJConfigValue[key].isNumeric() && ( (val = mJConfigValue[key].asDouble()) || true); 
     }
     //解析字符串类型配置的函数
-    bool checkAndUpdateStr(const std::string &key, std::string &val)
+    bool checkAndUpdateStr(const std::string& key, std::string &val)
     {
-        return mJConfigValue.isMember(key) && mJConfigValue[key].isString() && (val = mJConfigValue[key].asString()).size();
-    }
-    //解析字符串数组类型配置的函数
-    bool checkAndUpdateVecStr(const std::string &key, std::vector<std::string> &val)
-    {
-        if (mJConfigValue.isMember(key) && mJConfigValue[key].isArray())
-        {
-            val.resize(mJConfigValue[key].size());
-            for (int i = 0; i < mJConfigValue[key].size(); ++i)
-            {
-                val[i] = mJConfigValue[key][i].asString();
-            }
-        }
+        return mJConfigValue.isMember(key) && mJConfigValue[key].isString() &&  (val = mJConfigValue[key].asString()).size(); 
     }
     //解析bool类型配置的函数
-    bool checkAndUpdateBool(const std::string &key, bool &val)
+    bool checkAndUpdateBool(const std::string& key, bool &val)
     {
-        return mJConfigValue.isMember(key) && mJConfigValue[key].isBool() && ((val = mJConfigValue[key].asBool()) || true);
+        return mJConfigValue.isMember(key) && mJConfigValue[key].isBool() && ( (val = mJConfigValue[key].asBool()) || true); 
     }
     //解析颜色配置的函数
-    bool checkAndUpdateColor(const std::string &key, cv::Scalar &color)
+    bool checkAndUpdateColor(const std::string& key, cv::Scalar &color)
     {
-        if (mJConfigValue.isMember(key) && mJConfigValue[key].isArray() && mJConfigValue[key].size() == BGRA_CHANNEL_SIZE)
+        if(mJConfigValue.isMember(key) && mJConfigValue[key].isArray() && mJConfigValue[key].size() == BGRA_CHANNEL_SIZE)
         {
             for (int i = 0; i < BGRA_CHANNEL_SIZE; ++i)
             {
@@ -116,19 +102,30 @@ public:
             }
             return true;
         }
-        return false;
+        return false;        
     }
     //解析点配置的函数
-    bool checkAndUpdatePoint(const std::string &key, cv::Point &point)
+    bool checkAndUpdatePoint(const std::string& key, cv::Point &point)
     {
-        if (mJConfigValue.isMember(key) && mJConfigValue[key].isArray() && mJConfigValue[key].size() == 2 && mJConfigValue[key][0].isNumeric() && mJConfigValue[key][1].isNumeric())
+        if(mJConfigValue.isMember(key) && mJConfigValue[key].isArray() && mJConfigValue[key].size() == 2 && mJConfigValue[key][0].isNumeric() && mJConfigValue[key][1].isNumeric())
         {
             point = cv::Point(mJConfigValue[key][0].asDouble(), mJConfigValue[key][1].asDouble());
             return true;
         }
-        return false;
+        return false;        
     }
-
+        //解析字符串数组类型配置的函数
+    bool checkAndUpdateVecStr(const std::string& key, std::vector<std::string> &val)
+    {
+        if( mJConfigValue.isMember(key) && mJConfigValue[key].isArray() ) 
+        {
+            val.resize(mJConfigValue[key].size());
+            for(int i = 0; i <  mJConfigValue[key].size(); ++i)
+            {
+                val[i] = mJConfigValue[key][i].asString();
+            }
+        }
+    }
     /**
      * @brief 解析json格式的配置参数,是开发者需要重点关注和修改的地方！！！     
      * @param[in] configStr json格式的配置参数字符串
@@ -140,21 +137,22 @@ public:
         {
             SDKLOG(INFO) << "Input is none";
             return;
-        }
+        }        
         Json::Reader reader;
-        if (!reader.parse(confStr, mJConfigValue))
+        if( !reader.parse(confStr, mJConfigValue) )
         {
             SDKLOG(ERROR) << "failed to parse config " << confStr;
         }
         checkAndUpdateBool("draw_roi_area", drawROIArea);
-        checkAndUpdateNumber("thresh", algoConfig.thresh);
+        checkAndUpdateNumber("person_thresh", algoConfig.thresh);     
+        checkAndUpdateStr("mask_output_path", algoConfig.mask_output_path);            
         checkAndUpdateNumber("roi_line_thickness", roiLineThickness);
         checkAndUpdateBool("roi_fill", roiFill);
         checkAndUpdateStr("language", language);
         checkAndUpdateBool("draw_result", drawResult);
         checkAndUpdateBool("draw_confidence", drawConfidence);
-        //         checkAndUpdateVecStr("mark_text_en", targetRectTextMap["en"]);
-        //         checkAndUpdateVecStr("mark_text_zh", targetRectTextMap["zh"]);
+        checkAndUpdateStr("mark_text_en", targetRectTextMap["en"]);        
+        checkAndUpdateStr("mark_text_zh", targetRectTextMap["zh"]);        
         checkAndUpdateColor("roi_color", roiColor);
         checkAndUpdateColor("object_text_color", textFgColor);
         checkAndUpdateColor("object_text_bg_color", textBgColor);
@@ -163,29 +161,46 @@ public:
         checkAndUpdateNumber("object_text_size", targetTextHeight);
         checkAndUpdateBool("draw_warning_text", drawWarningText);
         checkAndUpdateNumber("warning_text_size", warningTextSize);
-        checkAndUpdateStr("warning_text_en", warningTextMap["en"]);
-        checkAndUpdateStr("warning_text_zh", warningTextMap["zh"]);
-        checkAndUpdateStr("mask_output_path", mask_output_path);
+        checkAndUpdateStr("warning_text_en", warningTextMap["en"]);  
+        checkAndUpdateStr("warning_text_zh", warningTextMap["zh"]);  
         checkAndUpdateColor("warning_text_color", warningTextFg);
-        checkAndUpdateColor("warning_text_bg_color", warningTextBg);
+        checkAndUpdateColor("warning_text_bg_color", warningTextBg);       
         checkAndUpdatePoint("warning_text_left_top", warningTextLeftTop);
+        
+        checkAndUpdateVecStr("alert_classes", alert_classes);
+        checkAndUpdateNumber("smoke_alert_area", smoke_alert_area);
+        checkAndUpdateNumber("fire_alert_area", fire_alert_area);
+        
+        checkAndUpdateColor("smoke_whiteColor", smoke_whiteColor);
+        checkAndUpdateColor("smoke_blackColor", smoke_blackColor);
+        checkAndUpdateColor("smoke_yellowColor", smoke_yellowColor);
+        checkAndUpdateColor("fire_Color", fire_Color);
+        
+        checkAndUpdateBool("black_smoke_enable", black_smoke_enable);
+        checkAndUpdateBool("white_smoke_enable", white_smoke_enable);
+        checkAndUpdateBool("yellow_smoke_enable", yellow_smoke_enable);
+        checkAndUpdateBool("fire_smoke_enable", fire_smoke_enable);
+        
+         checkAndUpdateNumber("alarm_hold_duration", alarm_hold_duration);
+        
+        
         std::vector<std::string> roiStrs;
-        if (mJConfigValue.isMember("polygon_1") && mJConfigValue["polygon_1"].isArray() && mJConfigValue["polygon_1"].size())
+        if(mJConfigValue.isMember("polygon_1") && mJConfigValue["polygon_1"].isArray() && mJConfigValue["polygon_1"].size() )
         {
             for (int i = 0; i < mJConfigValue["polygon_1"].size(); ++i)
-            {
-                if (mJConfigValue["polygon_1"][i].isString())
+            {                
+                if(mJConfigValue["polygon_1"][i].isString())
                 {
                     roiStrs.emplace_back(mJConfigValue["polygon_1"][i].asString());
                 }
             }
-        }
+        }        
         if (!roiStrs.empty())
         {
             origROIArgs = roiStrs;
-            UpdateROIInfo(currentInFrameSize.width, currentInFrameSize.height); //根据当前输入图像帧的大小更新roi参数
+            UpdateROIInfo(currentInFrameSize.width, currentInFrameSize.height);//根据当前输入图像帧的大小更新roi参数
         }
-
+                
         return;
     }
     /**

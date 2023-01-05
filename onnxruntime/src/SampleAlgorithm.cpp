@@ -14,12 +14,13 @@
 #define JSON_ALERT_FLAG_TRUE true
 #define JSON_ALERT_FLAG_FALSE false
 
+
 SampleAlgorithm::SampleAlgorithm()
-{
+{    
 }
 
 SampleAlgorithm::~SampleAlgorithm()
-{
+{    
     UnInit();
 }
 
@@ -35,20 +36,20 @@ STATUS SampleAlgorithm::Init()
         char *confStr = new char[len + 1];
         confIfs.read(confStr, len);
         confStr[len] = '\0';
-        SDKLOG(INFO) << "Configs:" << confStr;
+    	SDKLOG(INFO) << "Configs:"<<confStr;
         mConfig.ParseAndUpdateArgs(confStr);
         delete[] confStr;
         confIfs.close();
     }
     mDetector = std::make_shared<SampleDetector>();
-    mDetector->Init("/project/ev_sdk/model/model.onnx", mConfig.algoConfig.thresh);
-    //     mDetector->Init("/project/ev_sdk/1/model.engine", mConfig.algoConfig.thresh);
+    mDetector->Init();
     return STATUS_SUCCESS;
 }
 
+
 STATUS SampleAlgorithm::UnInit()
 {
-    if (mDetector.get() != nullptr)
+    if(mDetector.get() != nullptr)
     {
         SDKLOG(INFO) << "uninit";
         mDetector->UnInit();
@@ -84,7 +85,8 @@ STATUS SampleAlgorithm::GetOutFrame(JiImageInfo **out, unsigned int &outCount)
 }
 
 STATUS SampleAlgorithm::Process(const cv::Mat &inFrame, const char *args, JiEvent &event)
-{//输入图片为空的时候直接返回错误
+{
+    //输入图片为空的时候直接返回错误
     if (inFrame.empty())
     {
         SDKLOG(ERROR) << "Invalid input!";
@@ -113,89 +115,19 @@ STATUS SampleAlgorithm::Process(const cv::Mat &inFrame, const char *args, JiEven
     vector<Polygon> detectedPolygons;
     mDetector->ProcessImage(img, mask, detectedPolygons);    
     
+    bool isNeedAlert = true; // 是否需要报警
     // 创建输出图
     if(mConfig.algoConfig.mask_output_path.length()>0)
     {
         imwrite(mConfig.algoConfig.mask_output_path, mask);   ///自动测试，生成单通道mask图，mask图里的每个像素值表示类别索引号
         inFrame.copyTo(mOutputFrame);
     }
-//     else
-//     {
-//         cv::Mat rgb_img = mDetector->generate_rgb(inFrame, mask);  ///封装sdk，生成RGB染色图
-//         addWeighted(inFrame,0.4,rgb_img,0.6,0,mOutputFrame);
-//     }
-    bool isNeedAlert = false; // 是否需要报警
-    cv::Mat canvas = Mat::zeros(Size(inFrame.cols, inFrame.rows), CV_8UC1);
-    for (auto &roiPolygon : mConfig.currentROIOrigPolygons)
+    else
     {
-        std::vector<VectorPoint> f;
-        f.push_back(roiPolygon);
-        cv::fillPoly(canvas, f, Scalar(1,1,1));
-        
+        cv::Mat rgb_img = mDetector->generate_rgb(inFrame, mask);  ///封装sdk，生成RGB染色图
+        addWeighted(inFrame,0.4,rgb_img,0.6,0,mOutputFrame);
     }
-    int a = cv::countNonZero(canvas);
-    cv::Mat z = canvas.mul(mask);
-    vector<int> areas={0,0,0,0,0};
-    vector<bool> enable={false,mConfig.fire_smoke_enable,mConfig.black_smoke_enable,mConfig.white_smoke_enable,mConfig.yellow_smoke_enable};
-    vector<vector<int>> colors={{0,0,0,0},
-                                {mConfig.fire_Color[0], mConfig.fire_Color[1], mConfig.fire_Color[2],mConfig.fire_Color[3]},
-                                {mConfig.smoke_blackColor[0], mConfig.smoke_blackColor[1], mConfig.smoke_blackColor[2],mConfig.smoke_blackColor[3]},
-                                {mConfig.smoke_whiteColor[0], mConfig.smoke_whiteColor[1], mConfig.smoke_whiteColor[2],mConfig.smoke_whiteColor[3]},
-                                {mConfig.smoke_yellowColor[0], mConfig.smoke_yellowColor[1], mConfig.smoke_yellowColor[2],mConfig.smoke_yellowColor[3]}
-                        };
-//     inFrame.copyTo(mOutputFrame);
-    vector<cv::Mat> rgb_img = mDetector->generate_rgb(inFrame, z,areas,enable,colors);  ///封装sdk，生成RGB染色图
-//     addWeighted(inFrame,(1-mConfig.smoke_whiteColor[3]),rgb_img,mConfig.smoke_whiteColor[3],0,mOutputFrame);
     
-//     cv::Mat M1;
-//     inFrame.copyTo(M1);
-//     cv::Mat bg=M1.mul(rgb_img[4]);
-//     cv::Mat fire_mask;
-//     cv::Mat smoke_black;
-//     cv::Mat smoke_white;
-//     cv::Mat smoke_yellow;
-//     cv::Mat temp_1=mOutputFrame.mul(rgb_img[5]);
-//     cv::Mat temp_2=mOutputFrame.mul(rgb_img[6]);
-//     cv::Mat temp_3=mOutputFrame.mul(rgb_img[7]);
-//     cv::Mat temp_4=mOutputFrame.mul(rgb_img[8]);
-    addWeighted(rgb_img[5],mConfig.fire_Color[3],rgb_img[0],(1-mConfig.fire_Color[3]),0,rgb_img[5]);
-//     imwrite("/project/outputs/fire_mask.jpg", fire_mask);
-    addWeighted(rgb_img[6],mConfig.smoke_blackColor[3],rgb_img[1],(1-mConfig.smoke_blackColor[3]),0,rgb_img[6]);
-//     imwrite("/project/outputs/smoke_black.jpg", smoke_black);
-    addWeighted(rgb_img[7],mConfig.smoke_whiteColor[3],rgb_img[2],(1-mConfig.smoke_whiteColor[3]),0,rgb_img[7]);
-//     imwrite("/project/outputs/smoke_white.jpg", smoke_white);
-    addWeighted(rgb_img[8],mConfig.smoke_yellowColor[3],rgb_img[3],(1-mConfig.smoke_yellowColor[3]),0,rgb_img[8]);
-//     imwrite("/project/outputs/smoke_yellow.jpg", smoke_yellow);
-    
-//     mOutputFrame=M1+fire_mask+smoke_black+smoke_white+smoke_yellow;
-    mOutputFrame=rgb_img[4]+rgb_img[5]+rgb_img[6]+rgb_img[7]+rgb_img[8];
-    int b = cv::countNonZero(z);
-    vector<float> area_ratio;    
-    for(int i=0;i<5;i++){
-        float a_r=areas[i]*1.0/a;
-        area_ratio.push_back(a_r);
-        if(enable[i]){
-            if(i==1){
-                if(mConfig.smoke_alert_area<=a_r){
-                    isNeedAlert=true;
-                }
-            }else{
-                if(mConfig.fire_alert_area<=a_r){
-                    isNeedAlert=true;
-                }
-            }
-        }
-    }
-    if(isNeedAlert){
-        hold_duration++;
-    }else{
-        hold_duration=0;
-    }
-    if(hold_duration>mConfig.alarm_hold_duration){
-        isNeedAlert=true;
-    }else{
-        isNeedAlert=false;
-    }
     // 画ROI区域
     if (mConfig.drawROIArea && !mConfig.currentROIOrigPolygons.empty())
     {
@@ -223,45 +155,36 @@ STATUS SampleAlgorithm::Process(const cv::Mat &inFrame, const char *args, JiEven
     jAlgoValue[JSON_ALERT_FLAG_KEY] = jsonAlertCode;    
     jAlgoValue["target_info"].resize(0);
     jAlgoValue["mask"] = mConfig.algoConfig.mask_output_path;
-    int num=0;
-    for (int i=1;i<5;i++)
+    for (auto &obj : detectedPolygons)
     {
-        if(enable[i]){
-            if(i==1){
-                if(mConfig.fire_alert_area<=area_ratio[i]){
-                    Json::Value jTmpValue;
-                    jTmpValue["name"] = mConfig.alert_classes[i-1];
-                    jTmpValue["area_ratio"] = area_ratio[i];
-                    jAlgoValue["target_info"].append(jTmpValue);
-                    num++;
-                }
-            }else{
-                if(mConfig.smoke_alert_area<=area_ratio[i]){
-                    Json::Value jTmpValue;
-                    jTmpValue["name"] = mConfig.alert_classes[i-1];
-                    jTmpValue["area_ratio"] = area_ratio[i];
-                    jAlgoValue["target_info"].append(jTmpValue);
-                    num++;
-                }
-            }
+        Json::Value jTmpValue;
+        jTmpValue["name"] = obj.name;
+        Json::Value coordinate;
+        for(int i = 0; i< obj.points.size(); ++i)
+        {
+            coordinate.append(obj.points[i].x);
+            coordinate.append(obj.points[i].y);
         }
-           
+        jTmpValue["points"] = coordinate;
+        jAlgoValue["target_info"].append(jTmpValue);
     }
-    jAlgoValue["target_count"]=num;
     jRoot["algorithm_data"] = jAlgoValue;
     
     //create model data
     jDetectValue["mask"] = mConfig.algoConfig.mask_output_path;
-    jDetectValue["objects"].resize(0);  
-    for (int i=1;i<5;i++)
+    jDetectValue["polygons"].resize(0);  
+    for (auto &obj : detectedPolygons)
     {
-        if(enable[i]){
-            Json::Value jTmpValue;
-            jTmpValue["name"] = mConfig.alert_classes[i-1];
-            jTmpValue["area_ratio"] = area_ratio[i];
-            jDetectValue["objects"].append(jTmpValue);
+        Json::Value jTmpValue;
+        jTmpValue["name"] = obj.name;
+        Json::Value coordinate;
+        for(int i = 0; i< obj.points.size(); ++i)
+        {
+            coordinate.append(obj.points[i].x);
+            coordinate.append(obj.points[i].y);
         }
-        
+        jTmpValue["points"] = coordinate;
+        jDetectValue["polygons"].append(jTmpValue);
     }
     
     jRoot["model_data"] = jDetectValue;
@@ -285,3 +208,4 @@ STATUS SampleAlgorithm::Process(const cv::Mat &inFrame, const char *args, JiEven
     event.json = mStrOutJson.c_str();    
     return STATUS_SUCCESS;
 }
+

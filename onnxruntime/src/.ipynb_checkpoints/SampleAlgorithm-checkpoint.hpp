@@ -102,7 +102,6 @@ private:
     std::string mStrLastArg;                            //算法参数缓存,动态参数与缓存参数不一致时才会进行更新
     std::string mStrOutJson;                            //返回的json缓存,注意当算法实例销毁时,对应的通过算法接口获取的json字符串也将不在可用
     std::shared_ptr<SampleDetector> mDetector{nullptr}; //算法检测器实例
-    int hold_duration=0;
 };
 
 #endif //JI_SAMPLEALGORITHM_HPP
